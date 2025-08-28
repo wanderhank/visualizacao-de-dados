@@ -1,0 +1,66 @@
+option = {
+  title: {
+    text: 'Variação da chuva acumulada por ano (2015 a 2024) - Fazenda Carnaúba - Taperoá - PB'
+  },tooltip: {
+    trigger: 'axis',          
+    formatter: '{b}: {c} mm'  
+  },
+  xAxis: {
+    type: 'category',
+    name: 'Ano',
+    nameLocation: 'middle',
+    nameGap: 40,
+    data: [
+'2015',
+'2016',
+'2017',
+'2018',
+'2019',
+'2020',
+'2021',
+'2022',
+'2023',
+'2024',]
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: {
+        formatter: '{value} mm'
+      }
+  },
+  dataZoom: [
+    {
+      type: 'slider',   
+      show: true,
+      xAxisIndex: 0,
+      height: 15,
+      bottom: 10
+    },
+    {
+      type: 'inside',   
+      xAxisIndex: 0
+    }
+  ],
+  
+  series: [
+    {
+      data: [
+-17.9,
+-91.7,
+-83.5,
+553.3,
+-266.9,
+93.4,
+-202.8,
+550.1,
+-47.3,
+-87.4
+]
+,
+      type: 'line',
+      itemStyle: {
+      color: '#32ccff'
+    }
+    }
+  ]
+};
