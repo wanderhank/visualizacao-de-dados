@@ -1,0 +1,69 @@
+option = {
+  title: {
+    text: 'Volume de chuva acumulada na Fazenda Carnaúba nos últimos 10 anos'
+  },tooltip: {
+    trigger: 'axis',          
+    formatter: '{b}: {c} mm'  
+  },
+  xAxis: {
+    type: 'category',
+    name: 'Ano',
+    nameLocation: 'middle',
+    nameGap: 30,
+    data: ['2013',
+'2014',
+'2015',
+'2016',
+'2017',
+'2018',
+'2019',
+'2020',
+'2021',
+'2022',
+'2023',
+'2024',
+'2025'
+]
+  },
+  yAxis: {
+    type: 'value',
+      axisLabel: {
+        formatter: '{value} mm'
+      }
+  },
+  dataZoom: [
+    {
+      type: 'slider',   
+      show: true,
+      xAxisIndex: 0,
+      height: 20,
+      bottom: 15
+    },
+    {
+      type: 'inside',   
+      xAxisIndex: 0
+    }
+  ],
+  series: [
+    {
+      data: [280.0,
+404.6,
+386.7,
+295.0,
+211.5,
+764.8,
+497.9,
+591.3,
+388.5,
+938.6,
+465.6,
+378.2,
+489.1,
+],
+      type: 'bar',
+      itemStyle: {
+      color: '#32ccff'
+    }
+    }
+  ]
+};
