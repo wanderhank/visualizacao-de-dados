@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Balança Comercial Brasileira</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #map { width: 100%; height: 55vh; }
+        #timeline { width: 100%; height: 35vh; }
+        #controls { padding: 10px; }
+    </style>
+</head>
+<body>
+<div id="controls">
+    <label>Tipo de dado:</label>
+    <select id="tipo">
+        <option value="EXP">Exportações</option>
+        <option value="IMP">Importações</option>
+        <option value="BAL">Balança Comercial</option>
+    </select>
+
+    <label>Métrica:</label>
+    <select id="metric">
+        <option value="us_value">US$ (Valor)</option>
+        <option value="kg_weight">Peso (kg)</option>
+    </select>
+</div>
+
+<div id="map"></div>
+<div id="timeline"></div>
+
+<script>
+    var mapChart = echarts.init(document.getElementById('map'));
+    var lineChart = echarts.init(document.getElementById('timeline'));
+
+    // --- Função para formatar valores ---
+    function formatValue(val, metric) {
+        if (val == null) return 'N/A';
+        if (metric === 'us_value') {
+            let abs = Math.abs(val);
+            if (abs >= 1e9) return 'US$ ' + (val/1e9).toFixed(1) + ' bi';
+            if (abs >= 1e6) return 'US$ ' + (val/1e6).toFixed(1) + ' mi';
+            return 'US$ ' + val.toLocaleString();
+        } else {
+            // kg → converte para toneladas
+            let tons = val / 1000;
+            let abs = Math.abs(tons);
+            if (abs >= 1e6) return (tons/1e6).toFixed(1) + ' Mt';
+            if (abs >= 1e3) return (tons/1e3).toFixed(1) + ' mil t';
+            return tons.toFixed(0) + ' t';
+        }
+    }
+
+    $.get('./world.json', function(worldJson) {
+        echarts.registerMap('world', worldJson);
+
+        $.get('./database.json', function(dados) {
+            var anos = Object.keys(dados["BAL"]);
+
+            // --- Cores distintas por tipo ---
+            var seriesColors = {
+                EXP: '#2ca02c', // verde
+                IMP: '#d62728', // vermelho
+                BAL: '#1f77b4'  // azul
+            };
+
+            var mapPalettes = {
+                EXP: ['#e5f5e0','#a1d99b','#31a354'], // verde claro → escuro
+                IMP: ['#fee0d2','#fc9272','#de2d26'], // vermelho claro → escuro
+                BAL: ['#d73027','#ffffbf','#1a9850']  // divergente
+            };
+
+            function buildSeries(metric) {
+                return ["EXP","IMP","BAL"].map(tipo => ({
+                    name: tipo,
+                    type: 'line',
+                    smooth: true,
+                    data: anos.map(ano =>
+                        dados[tipo][ano].reduce((acc, item) => acc + (item[metric] || 0), 0)
+                    ),
+                    lineStyle: { color: seriesColors[tipo], width: 2 },
+                    itemStyle: { color: seriesColors[tipo] }
+                }));
+            }
+
+            function renderMap(year, metric, tipo) {
+                var rawData = dados[tipo][year];
+                var data = rawData.map(item => ({
+                    name: item.name,
+                    value: item[metric]
+                }));
+
+                let visualMapConfig;
+                if (tipo === "BAL") {
+                    let minVal = Math.min(...data.map(d => d.value));
+                    let maxVal = Math.max(...data.map(d => d.value));
+                    let absMax = Math.max(Math.abs(minVal), Math.abs(maxVal));
+                    visualMapConfig = {
+                        min: -absMax,
+                        max: absMax,
+                        left: 'right',
+                        text: ['Superávit', 'Déficit'],
+                        calculable: true,
+                        inRange: { color: mapPalettes.BAL }
+                    };
+                } else {
+                    visualMapConfig = {
+                        min: Math.min(...data.map(d => d.value)) || 0,
+                        max: Math.max(...data.map(d => d.value)) || 1000,
+                        left: 'right',
+                        text: ['Maior', 'Menor'],
+                        calculable: true,
+                        inRange: { color: mapPalettes[tipo] }
+                    };
+                }
+
+                mapChart.setOption({
+                    title: {
+                        text: `${tipo} - ${year}`,
+                        subtext: "Monitor do Comércio Exterior Brasileiro",
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: p => `${p.name}<br/>${formatValue(p.value, metric)}`
+                    },
+                    visualMap: visualMapConfig,
+                    series: [{
+                        name: tipo,
+                        type: 'map',
+                        map: 'world',
+                        data: data,
+                        roam: true
+                    }]
+                });
+            }
+
+            function renderTimeline(metric) {
+                lineChart.setOption({
+                    title: { text: 'Totais por Ano (1997–2025)', left: 'center' },
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function(params) {
+                            let lines = params.map(p =>
+                                `${p.marker} ${p.seriesName}: ${formatValue(p.value, metric)}`
+                            );
+                            return `${params[0].axisValue}<br/>` + lines.join('<br/>');
+                        }
+                    },
+                    legend: { bottom: 0 },
+                    xAxis: { type: 'category', data: anos },
+                    yAxis: {
+                        type: 'value',
+                        axisLabel: {
+                            formatter: function (val) {
+                                return formatValue(val, metric);
+                            }
+                        }
+                    },
+                    dataZoom: [{ type: 'slider', start: 0, end: 100 }],
+                    series: buildSeries(metric)
+                });
+            }
+
+            // inicial
+            var tipo = 'EXP';
+            var metric = 'us_value';
+            renderMap("1997", metric, tipo);
+            renderTimeline(metric);
+
+            $('#tipo').on('change', function() {
+                tipo = $(this).val();
+                renderMap("1997", metric, tipo);
+            });
+
+            $('#metric').on('change', function() {
+                metric = $(this).val();
+                renderMap("1997", metric, tipo);
+                renderTimeline(metric);
+            });
+
+            lineChart.on('click', function(params) {
+                var year = params.name;
+                var serie = params.seriesName;
+                $('#tipo').val(serie);
+                renderMap(year, metric, serie);
+            });
+        });
+    });
+</script>
+</body>
+</html>
